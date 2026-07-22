@@ -156,7 +156,7 @@ export async function logout() {
     }
   }
   clearSession();
-  window.location.href = '/login';
+  window.location.href = '/';
 }
 
 /**
@@ -164,7 +164,7 @@ export async function logout() {
  */
 export function requireAdmin() {
   if (!isLoggedIn()) {
-    window.location.href = '/login';
+    window.location.reload();
     return false;
   }
   const session = getSession();
@@ -183,7 +183,6 @@ export function requireAdmin() {
  */
 export function requireAuth() {
   if (!isLoggedIn()) {
-    window.location.href = '/login';
     return false;
   }
   return true;

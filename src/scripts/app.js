@@ -1,9 +1,9 @@
 /**
  * ZeroixDark Marketplace - Main Application Controller
- * SPA-style router with hash-based navigation
+ * SPA-style with integrated login page
  */
 import { database } from '../config/firebase.js';
-import { requireAuth, requireAdmin, getSession, setOnline, setOffline, logout as authLogout } from './auth.js';
+import { requireAdmin, getSession, setOnline, setOffline, logout as authLogout, isLoggedIn } from './auth.js';
 import { showToast } from './toast.js';
 import { escapeHtml, getRemainingTime, getRemainingTimeMini, formatDate, logActivity, RAM_PACKAGES, ROLE_PACKAGES, getRoleColorClass, getRoleDisplayName } from './utils.js';
 import { renderDashboard, renderUserDashboard } from './pages/dashboard.js';
@@ -13,6 +13,7 @@ import { renderActivityLogs } from './pages/activity_logs.js';
 import { renderPackages } from './pages/packages.js';
 import { renderSettings } from './pages/settings.js';
 import { renderAnnouncement } from './pages/announcement.js';
+import { renderLoginPage } from './pages/login_page.js';
 
 // Initialize Lucide icons
 function initIcons() {
@@ -24,7 +25,7 @@ function initIcons() {
 // Sidebar toggle
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('sidebar');
-  sidebar.classList.toggle('open');
+  if (sidebar) sidebar.classList.toggle('open');
 };
 
 // Logout
@@ -65,12 +66,10 @@ const pageTitles = {
 
 // Countdown interval
 let countdownInterval = null;
-let sidebarCountdownInterval = null;
 
 // Start countdown timers
 function startCountdowns(expiredAt) {
   clearInterval(countdownInterval);
-  clearInterval(sidebarCountdownInterval);
 
   const updateCountdown = () => {
     const mini = document.getElementById('countdownMini');
@@ -121,52 +120,120 @@ function startCountdowns(expiredAt) {
   countdownInterval = setInterval(updateCountdown, 1000);
 }
 
-// Render sidebar navigation
-function renderSidebarNav() {
-  const session = getSession();
-  const nav = document.getElementById('sidebarNav');
-  const profile = document.getElementById('sidebarProfile');
-  const roleBadge = document.getElementById('roleBadge');
-  const avatarImg = document.getElementById('avatarImg');
+// Show the main app shell (sidebar + navbar + content)
+function showAppShell(session) {
+  const app = document.getElementById('app');
+  app.innerHTML = buildAppShellHTML();
+
+  // Update brand name
   const brandName = document.getElementById('brandName');
+  if (brandName) brandName.textContent = import.meta.env.VITE_APP_NAME || 'ZeroixDark Marketplace';
 
-  if (!nav || !session) return;
-
-  // Brand name
-  brandName.textContent = import.meta.env.VITE_APP_NAME || 'ZeroixDark Marketplace';
-
-  // Navigation items
-  const items = getNavItems(session.role);
-  nav.innerHTML = items.map(item => `
-    <div class="nav-item" data-hash="${item.hash}" onclick="navigateTo('${item.hash}')">
-      <i data-lucide="${item.icon}"></i>
-      <span>${escapeHtml(item.label)}</span>
-    </div>
-  `).join('');
+  // Render sidebar nav
+  const nav = document.getElementById('sidebarNav');
+  if (nav) {
+    const items = getNavItems(session.role);
+    nav.innerHTML = items.map(item => `
+      <div class="nav-item" data-hash="${item.hash}" onclick="navigateTo('${item.hash}')">
+        <i data-lucide="${item.icon}"></i>
+        <span>${escapeHtml(item.label)}</span>
+      </div>
+    `).join('');
+  }
 
   // Profile card
-  profile.innerHTML = `
-    <img src="${session.profilePic || 'https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || session.username)}&background=131b33&color=38bdf8&size=72'}" 
-         class="profile-avatar" alt="avatar" />
-    <div class="profile-info">
-      <div class="profile-name">${escapeHtml(session.name || session.username)}</div>
-      <div class="profile-username">@${escapeHtml(session.username)}</div>
-    </div>
-  `;
+  const profile = document.getElementById('sidebarProfile');
+  if (profile) {
+    profile.innerHTML = `
+      <img src="${session.profilePic || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || session.username)}&background=131b33&color=38bdf8&size=72`}" 
+           class="profile-avatar" alt="avatar" />
+      <div class="profile-info">
+        <div class="profile-name">${escapeHtml(session.name || session.username)}</div>
+        <div class="profile-username">@${escapeHtml(session.username)}</div>
+      </div>
+    `;
+  }
 
-  // Role badge in navbar
+  // Role badge
+  const roleBadge = document.getElementById('roleBadge');
   if (roleBadge) {
     roleBadge.textContent = getRoleDisplayName(session.role);
     roleBadge.className = `role-badge ${getRoleColorClass(session.role)}`;
   }
 
   // Avatar
+  const avatarImg = document.getElementById('avatarImg');
   if (avatarImg) {
     avatarImg.src = session.profilePic || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || session.username)}&background=131b33&color=38bdf8&size=72`;
   }
 
   // Start countdown
   startCountdowns(session.expiredAt);
+
+  // Set online
+  setOnline(session.uid);
+
+  // Set offline on unload
+  window.addEventListener('beforeunload', () => {
+    setOffline(session.uid);
+  });
+
+  initIcons();
+}
+
+function buildAppShellHTML() {
+  return `
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <i data-lucide="server-cog"></i>
+        </div>
+        <span class="brand-name" id="brandName">ZeroixDark Marketplace</span>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-countdown" id="sidebarCountdown"></div>
+        <div class="sidebar-profile" id="sidebarProfile"></div>
+        <button class="sidebar-logout" id="btnLogout" onclick="logout()">
+          <i data-lucide="log-out"></i> Logout
+        </button>
+      </div>
+      <button class="sidebar-close-mobile" id="sidebarClose" onclick="toggleSidebar()">
+        <i data-lucide="x"></i>
+      </button>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <!-- Navbar -->
+      <header class="navbar" id="navbar">
+        <div class="navbar-left">
+          <button class="sidebar-toggle-mobile" onclick="toggleSidebar()">
+            <i data-lucide="menu"></i>
+          </button>
+          <h1 class="navbar-title" id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="navbar-right">
+          <span class="role-badge" id="roleBadge">User</span>
+          <span class="countdown-mini" id="countdownMini">Memuat...</span>
+          <div class="navbar-avatar" id="navbarAvatar" onclick="toggleSidebar()">
+            <img src="" alt="avatar" id="avatarImg" />
+          </div>
+        </div>
+      </header>
+
+      <!-- Expired Banner -->
+      <div class="expired-banner" id="expiredBanner" style="display:none;">
+        <i data-lucide="alert-triangle"></i>
+        <span>Akun Anda telah <strong>EXPIRED</strong>. Hubungi admin untuk perpanjangan.</span>
+        <button onclick="window.location.hash='packages'">Perpanjang Sekarang</button>
+      </div>
+
+      <!-- Page Content -->
+      <main class="page-content" id="pageContent"></main>
+    </div>
+  `;
 }
 
 // Global navigate function
@@ -178,9 +245,10 @@ window.navigateTo = function(hash) {
 async function renderPage() {
   const hash = window.location.hash.replace('#', '') || 'dashboard';
   const session = getSession();
-  const app = document.getElementById('app');
   const pageContent = document.getElementById('pageContent');
   const pageTitle = document.getElementById('pageTitle');
+
+  if (!pageContent || !session) return;
 
   // Update active nav
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -192,10 +260,8 @@ async function renderPage() {
     pageTitle.textContent = pageTitles[hash] || 'Dashboard';
   }
 
-  // Show loading
-  if (pageContent) {
-    pageContent.innerHTML = '<div class="skeleton-loader"><div class="skeleton-row" style="width:60%;margin-bottom:12px;"></div><div class="skeleton-row" style="width:80%;margin-bottom:12px;"></div></div>';
-  }
+  // Show loading skeleton
+  pageContent.innerHTML = '<div class="skeleton-loader"><div class="skeleton-row" style="width:60%;margin-bottom:12px;"></div><div class="skeleton-row" style="width:80%;margin-bottom:12px;"></div></div>';
 
   try {
     switch (hash) {
@@ -254,30 +320,31 @@ async function checkAnnouncement() {
       const lastRead = localStorage.getItem('mp_last_announcement');
       const currentTs = data.timestamp || 0;
       if (!lastRead || parseInt(lastRead) < currentTs) {
-        // Show announcement modal
         const overlay = document.getElementById('modalOverlay');
         const modal = document.getElementById('modalContent');
-        overlay.style.display = 'flex';
-        modal.innerHTML = `
-          <div class="modal-header">
-            <i data-lucide="megaphone" style="color:var(--accent-violet);"></i>
-            <h2>Pengumuman</h2>
-          </div>
-          <div class="modal-body">
-            <p style="white-space:pre-wrap;">${escapeHtml(data.pesan || '')}</p>
-            <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">
-              Oleh: ${escapeHtml(data.oleh || 'Admin')} | ${formatDate(data.timestamp)}
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-primary" id="closeAnnouncement">Mengerti</button>
-          </div>
-        `;
-        if (window.lucide) lucide.createIcons();
-        document.getElementById('closeAnnouncement').onclick = () => {
-          overlay.style.display = 'none';
-          localStorage.setItem('mp_last_announcement', currentTs.toString());
-        };
+        if (overlay && modal) {
+          overlay.style.display = 'flex';
+          modal.innerHTML = `
+            <div class="modal-header">
+              <i data-lucide="megaphone" style="color:var(--accent-violet);"></i>
+              <h2>Pengumuman</h2>
+            </div>
+            <div class="modal-body">
+              <p style="white-space:pre-wrap;">${escapeHtml(data.pesan || '')}</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">
+                Oleh: ${escapeHtml(data.oleh || 'Admin')} | ${formatDate(data.timestamp)}
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-primary" id="closeAnnouncement">Mengerti</button>
+            </div>
+          `;
+          if (window.lucide) lucide.createIcons();
+          document.getElementById('closeAnnouncement').onclick = () => {
+            overlay.style.display = 'none';
+            localStorage.setItem('mp_last_announcement', currentTs.toString());
+          };
+        }
       }
     }
   } catch (e) {
@@ -285,48 +352,37 @@ async function checkAnnouncement() {
   }
 }
 
+// Show login page
+async function showLogin() {
+  const app = document.getElementById('app');
+  // Show app container so login renders inside it
+  app.style.display = 'flex';
+  await renderLoginPage();
+}
+
 // Initialize app
 async function init() {
-  // Check if on login page
-  if (window.location.pathname.includes('login')) {
-    const session = getSession();
-    if (session && isLoggedIn()) {
-      window.location.href = '/';
-      return;
-    }
-    // Show login page
-    document.getElementById('app').style.display = 'none';
-    return;
-  }
-
-  // Auth check
-  if (!requireAuth()) return;
-
-  const session = getSession();
   const app = document.getElementById('app');
-  app.style.display = 'flex';
 
-  // Set online
-  setOnline(session.uid);
-  
-  // Set offline on unload
-  window.addEventListener('beforeunload', () => {
-    setOffline(session.uid);
-  });
+  // Check if already logged in
+  if (isLoggedIn()) {
+    const session = getSession();
+    showAppShell(session);
 
-  // Render sidebar
-  renderSidebarNav();
+    // Listen for hash changes
+    window.addEventListener('hashchange', renderPage);
 
-  // Check announcement for non-admin users
-  if (session.role !== 'admin') {
-    await checkAnnouncement();
+    // Check announcement for non-admin
+    if (session.role !== 'admin') {
+      await checkAnnouncement();
+    }
+
+    // Render initial page
+    await renderPage();
+  } else {
+    // Show login page
+    await showLogin();
   }
-
-  // Listen for hash changes
-  window.addEventListener('hashchange', renderPage);
-
-  // Render initial page
-  await renderPage();
 }
 
 // Run init
