@@ -1,0 +1,37 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "users": {
+      ".read": "auth != null || !root.child('users').exists()",
+      ".write": true,
+      "$uid": {
+        ".read": true,
+        ".write": true,
+        "servers": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
+    "packages": {
+      ".read": true,
+      ".write": true
+    },
+    "activityLogs": {
+      ".read": true,
+      ".write": true,
+      "$logId": {
+        ".validate": "newData.hasChildren(['uid', 'username', 'action', 'detail', 'timestamp'])"
+      }
+    },
+    "pengumuman": {
+      ".read": true,
+      ".write": true
+    },
+    "broadcasts": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
