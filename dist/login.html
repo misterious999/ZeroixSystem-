@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - ZeroixDark Marketplace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="/src/styles/theme.css" />
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-page::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse at 30% 40%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(124, 58, 237, 0.08) 0%, transparent 50%);
+      animation: bgPulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgPulse {
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      position: relative;
+      z-index: 1;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 24px;
+    }
+
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .login-header p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: 8px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid rgba(56, 189, 248, 0.12);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .error-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .error-card {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .error-card .error-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--danger);
+    }
+
+    .error-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--danger);
+      margin-bottom: 8px;
+    }
+
+    .error-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .error-card .btn-close {
+      padding: 10px 24px;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .error-card .btn-close:hover {
+      opacity: 0.9;
+    }
+
+    .input-icon-wrapper {
+      position: relative;
+    }
+
+    .input-icon-wrapper i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      width: 16px;
+      height: 16px;
+    }
+
+    .input-icon-wrapper .form-input {
+      padding-left: 42px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">
+          <i data-lucide="server-cog"></i>
+        </div>
+        <h1 id="appTitle">ZeroixDark Marketplace</h1>
+        <p>Masuk ke akun hosting Anda</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginUsername">Username</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="user"></i>
+            <input type="text" class="form-input" id="loginUsername" placeholder="Masukkan username" autocomplete="username" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Password</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="lock"></i>
+            <input type="password" class="form-input" id="loginPassword" placeholder="Masukkan password" autocomplete="current-password" required />
+          </div>
+        </div>
+        <button type="submit" class="login-btn" id="loginBtn">
+          Masuk
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span>ZeroixDark Marketplace</span> v1.0.0
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Modal Container -->
+  <div id="errorModalContainer"></div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script type="module">
+    import { database } from '../config/firebase.js';
+    import { ref, get, update } from 'firebase/database';
+    import { escapeHtml, logActivity } from '../scripts/utils.js';
+
+    // Set app title from env
+    const appTitle = import.meta.env.VITE_APP_NAME || 'ZeroixDark Marketplace';
+    document.getElementById('appTitle').textContent = appTitle;
+
+    // Init lucide icons
+    if (window.lucide) lucide.createIcons();
+
+    // Show error modal (elegant, not native alert)
+    function showError(message) {
+      const container = document.getElementById('errorModalContainer');
+      container.innerHTML = `
+        <div class="error-modal">
+          <div class="error-card">
+            <div class="error-icon">
+              <i data-lucide="x-circle"></i>
+            </div>
+            <h3>Login Gagal</h3>
+            <p>${escapeHtml(message)}</p>
+            <button class="btn-close" onclick="this.parentElement.parentElement.remove()">Tutup</button>
+          </div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Toast
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      const icons = { success: 'check-circle', error: 'x-circle', warning: 'alert-triangle', info: 'info' };
+      toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}"></i><span>${escapeHtml(message)}</span><button class="toast-close" onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>`;
+      container.appendChild(toast);
+      if (window.lucide) lucide.createIcons();
+      setTimeout(() => { if (toast.parentElement) { toast.classList.add('toast-exit'); setTimeout(() => toast.remove(), 300); } }, 4000);
+    }
+
+    // Login handler
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+
+      if (!username || !password) {
+        showToast('Mohon isi username dan password.', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
+        const users = snapshot.val();
+
+        if (!users) {
+          showError('Database tidak tersedia. Silakan coba lagi.');
+          return;
+        }
+
+        // Find user
+        let foundUser = null;
+        let foundUid = null;
+
+        for (const [uid, user] of Object.entries(users)) {
+          if (user.username && user.username.toLowerCase() === username.toLowerCase()) {
+            foundUser = user;
+            foundUid = uid;
+            break;
+          }
+        }
+
+        if (!foundUser) {
+          showError('Username tidak ditemukan.');
+          return;
+        }
+
+        if (foundUser.password !== password) {
+          showError('Password salah.');
+          return;
+        }
+
+        // Check active status
+        if (foundUser.isActive === false) {
+          showError('Akun Anda telah dinonaktifkan oleh admin. Hubungi admin untuk informasi lebih lanjut.');
+          return;
+        }
+
+        // Check expired
+        if (foundUser.expiredAt && Date.now() > foundUser.expiredAt) {
+          showError('Paket Anda telah EXPIRED. Hubungi admin untuk perpanjangan.');
+          return;
+        }
+
+        // Update last login
+        await update(ref(database, `users/${foundUid}`), {
+          lastLoginAt: Date.now(),
+          isOnline: true
+        });
+
+        // Log activity
+        try {
+          await logActivity(foundUid, foundUser.username, 'login', 'User berhasil login');
+        } catch (e) {
+          console.warn('Log activity failed:', e);
+        }
+
+        // Save session
+        const session = {
+          uid: foundUid,
+          username: foundUser.username,
+          role: foundUser.role,
+          panelRole: foundUser.panelRole || 'reseller',
+          name: foundUser.name,
+          email: foundUser.email,
+          whatsapp: foundUser.whatsapp,
+          profilePic: foundUser.profilePic || '',
+          ramPackage: foundUser.ramPackage || '5gb',
+          expiredAt: foundUser.expiredAt || null,
+          isActive: foundUser.isActive !== false,
+          createdAt: foundUser.createdAt || Date.now(),
+          lastLoginAt: Date.now()
+        };
+
+        localStorage.setItem('mp_session', JSON.stringify(session));
+        showToast('Login berhasil! Mengalihkan...', 'success');
+
+        // Redirect
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 800);
+
+      } catch (error) {
+        console.error('Login error:', error);
+        showError('Terjadi kesalahan. Silakan coba lagi.');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Masuk';
+    };
+
+    // Check if already logged in
+    const existingSession = localStorage.getItem('mp_session');
+    if (existingSession) {
+      try {
+        const session = JSON.parse(existingSession);
+        const now = Date.now();
+        if (session.lastLoginAt && (now - session.lastLoginAt) > 24 * 60 * 60 * 1000) {
+          localStorage.removeItem('mp_session');
+        } else {
+          window.location.href = '/';
+        }
+      } catch (e) {
+        localStorage.removeItem('mp_session');
+      }
+    }
+  </script>
+</body>
+</html>
