@@ -1,0 +1,34 @@
+{
+  "users": {
+    "admin": {
+      "password": "admin123",
+      "role": "admin",
+      "name": "Super Admin",
+      "whatsapp": "6281234567890",
+      "profilePic": "",
+      "panelRole": "owner",
+      "ramPackage": "unlimited",
+      "expiredAt": 0,
+      "createdAt": 1718000000000,
+      "isActive": true,
+      "isOnline": false,
+      "lastLoginAt": 0
+    }
+  },
+  "servers": {
+    "_placeholder": true
+  },
+  "activityLogs": {
+    "init_log": {
+      "username": "system",
+      "action": "CREATE",
+      "detail": "Database diinisialisasi untuk pertama kali",
+      "timestamp": 1718000000000
+    }
+  },
+  "announcement": {
+    "message": "Selamat datang di Control Panel ZeroixDark Ptero! Panel sudah aktif.",
+    "timestamp": 1718000000000,
+    "by": "System"
+  }
+}
