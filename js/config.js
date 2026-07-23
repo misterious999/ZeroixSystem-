@@ -6,7 +6,7 @@ const CONFIG = {
   firebase: {
     apiKey: "AIzaSyBsSQqxgxeto9FeCWSLPFqfEXtFJ@avoYQ",
     authDomain: "zeroixdark-market.firebaseapp.com",
-    databaseURL: "https://zeroixdark-market-default-rtob.asia-southeastl.firebase",
+    databaseURL: "https://zeroixdark-market-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "zeroixdark-market",
     storageBucket: "zeroixdark-market.firebasestorage.app",
     messagingSenderId: "950810511981",
