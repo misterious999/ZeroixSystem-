@@ -1,5 +1,5 @@
 // ============================================
-// ZEROIXDARK PTERO - LOGIKA UTAMA FULL AUTO (CORS BYPASSED & FIXED PAYLOAD)
+// ZEROIXDARK PTERO - LOGIKA UTAMA FULL AUTO (SYNC FIREBASE & PTERO)
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contentDiv = document.getElementById('page-content');
   const { db, ref, get, set, update, remove } = window.firebaseAPI;
   
-  // Konfigurasi Pterodactyl API & Cloudflare Worker
   const pteroConfig = window.CONFIG.ptero.primary;
   const WORKER_URL = "https://restless-truth-9b75.amisterious09.workers.dev";
   const pteroHeaders = {
@@ -23,7 +22,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       "Authorization": `Bearer ${pteroConfig.apiKey}`
   };
 
-  // Mencegah double slash pada URL panel
   const pteroDomain = pteroConfig.url.replace(/\/$/, ""); 
   const pteroApiUrl = `${WORKER_URL}/?${pteroDomain}`;
 
@@ -45,12 +43,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (srvSnap.exists()) {
               for (let [sId, sData] of Object.entries(srvSnap.val())) {
                   if (sData.ownerUsername === session.username) {
-                      if (sData.pteroServerId) {
-                          await fetch(`${pteroApiUrl}/api/application/servers/${sData.pteroServerId}/force`, { method: 'DELETE', headers: pteroHeaders });
-                      }
-                      if (sData.pteroUserId) {
-                          await fetch(`${pteroApiUrl}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
-                      }
+                      if (sData.pteroServerId) await fetch(`${pteroApiUrl}/api/application/servers/${sData.pteroServerId}/force`, { method: 'DELETE', headers: pteroHeaders });
+                      if (sData.pteroUserId) await fetch(`${pteroApiUrl}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
                       await remove(ref(db, `servers/${sId}`));
                   }
               }
@@ -166,19 +160,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       </div>
 
-      <!-- MODAL RESI SUKSES -->
+      <!-- MODAL RESI SUKSES + TOMBOL SALIN -->
       <div id="successModal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
           <i data-lucide="check-circle" class="text-success" style="width:70px; height:70px; margin-bottom:15px; color:var(--success);"></i>
           <h2 style="margin-bottom:10px;">Berhasil Dibuat!</h2>
           <p class="text-muted" style="margin-bottom:20px; font-size:0.9rem;">Silakan salin detail akun di bawah ini untuk dikirimkan ke pembeli.</p>
+          
           <div style="background:rgba(0,0,0,0.3); padding:20px; border-radius:12px; text-align:left; margin-bottom:20px; font-family:monospace; line-height:1.8; border: 1px solid var(--glass-border);">
             <div style="display:flex; justify-content:space-between;"><b>👤 Username</b> <span id="resUname" class="text-cyan"></span></div>
             <div style="display:flex; justify-content:space-between;"><b>🔑 Password</b> <span id="resPass" class="text-gold"></span></div>
             <div style="display:flex; justify-content:space-between;"><b>📦 Paket RAM</b> <span id="resRam"></span></div>
             <div style="display:flex; justify-content:space-between;"><b>⏳ Masa Aktif</b> <span id="resDays"></span></div>
+            <div style="display:flex; justify-content:space-between;"><b>🌐 Login Web</b> <span class="text-cyan">Website Panel</span></div>
           </div>
-          <button class="btn btn-primary" onclick="location.reload()" style="width:100%;"><i data-lucide="refresh-cw"></i> Tutup & Refresh Halaman</button>
+          
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary" onclick="salinResiUser()" style="flex:1;"><i data-lucide="copy"></i> Salin Teks</button>
+            <button class="btn btn-primary" onclick="location.reload()" style="flex:1;"><i data-lucide="refresh-cw"></i> Refresh</button>
+          </div>
         </div>
       </div>
     `;
@@ -199,7 +199,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openAddUserModal = () => { document.getElementById('addUserModal').classList.add('active'); lucide.createIcons(); };
     window.closeAddUserModal = () => { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('formAddUser').reset(); };
 
-    // FUNGSI EKSEKUSI UTAMA
+    // FUNGSI SALIN TEKS RESI KE CLIPBOARD
+    window.salinResiUser = () => {
+        const u = document.getElementById('resUname').innerText;
+        const p = document.getElementById('resPass').innerText;
+        const r = document.getElementById('resRam').innerText;
+        const d = document.getElementById('resDays').innerText;
+        const text = `*AKSES PANEL BERHASIL DIBUAT* 🚀\n\n👤 Username: ${u}\n🔑 Password: ${p}\n📦 Paket RAM: ${r}\n⏳ Masa Aktif: ${d}\n\nSilakan login ke website untuk memantau server Anda. Terima kasih!`;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            window.utils.showToast("Berhasil menyalin teks ke clipboard!", "success");
+        }).catch(() => {
+            window.utils.showToast("Gagal menyalin teks.", "error");
+        });
+    };
+
+    // FUNGSI EKSEKUSI UTAMA (SYNC FIREBASE + PTERO)
     window.submitAddUser = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmitUser');
@@ -220,8 +235,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let pteroUserId = null, pteroServerId = null, pteroIdentifier = null;
 
-            // 1. CREATE USER API
-            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Membangun Akun...';
+            // 1. CREATE USER API PTERODACTYL
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Membangun Akun Ptero...';
             const pteroUserRes = await fetch(`${pteroApiUrl}/api/application/users`, {
                 method: 'POST', headers: pteroHeaders,
                 body: JSON.stringify({ email: `${uname}@zeroixdark.com`, username: uname, first_name: name, last_name: "Member", password: pass })
@@ -234,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pteroUserData = await pteroUserRes.json();
             pteroUserId = pteroUserData.attributes.id;
 
-            // 2. CREATE SERVER API (Menggunakan struktur persis dari file sukses)
+            // 2. CREATE SERVER API PTERODACTYL
             btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Membangun Server...';
             let ramMB = parseInt(ram.replace('gb', '')) * 1024; 
             if(ram === 'unlimited') ramMB = 0;
@@ -258,7 +273,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!pteroSrvRes.ok) {
                 const err = await pteroSrvRes.json().catch(()=>({}));
-                // Rollback user jika server gagal dibuat
                 await fetch(`${pteroApiUrl}/api/application/users/${pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
                 throw new Error(`Gagal Server: ${err.errors?.[0]?.detail || "Node/Location tidak merespon."}`);
             }
@@ -267,12 +281,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             pteroServerId = pteroServerData.attributes.id;
             pteroIdentifier = pteroServerData.attributes.identifier;
 
-            // 3. SIMPAN KE DATABASE FIREBASE
-            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Menyimpan Database...';
+            // 3. SIMPAN KE FIREBASE (AGAR BISA LOGIN KE WEBSITE & PANEL)
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Menyimpan Kredensial Website...';
             await set(ref(db, `users/${uname}`), {
-                password: pass, role: "user", name: name, whatsapp: wa,
+                password: pass, 
+                role: "user", 
+                name: name, 
+                whatsapp: wa,
                 expiredAt: Date.now() + (days * 24 * 60 * 60 * 1000), 
-                createdAt: Date.now(), isActive: true, isOnline: false
+                createdAt: Date.now(), 
+                isActive: true, 
+                isOnline: false
             });
 
             await set(ref(db, `servers/${serverId}`), {
@@ -281,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pteroUserId: pteroUserId, pteroServerId: pteroServerId, pteroIdentifier: pteroIdentifier
             });
 
-            // Sukses!
+            // Tampilkan Resi Sukses
             document.getElementById('resUname').innerText = uname;
             document.getElementById('resPass').innerText = pass;
             document.getElementById('resRam').innerText = ram.toUpperCase();
@@ -329,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =====================================================================
-  // 3. HALAMAN KELOLA SERVER & SERVER SAYA
+  // 3. HALAMAN KELOLA SERVER
   // =====================================================================
   else if (path === 'admin-servers.html' || path === 'user-servers.html') {
     const isUserMode = path === 'user-servers.html';
@@ -373,9 +392,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // =====================================================================
-  // 4. HALAMAN LAINNYA
-  // =====================================================================
   else { contentDiv.innerHTML = `<div class="glass-card" style="text-align:center; padding: 50px;"><h3>Fitur Sedang Dikembangkan</h3></div>`; }
 
   lucide.createIcons();
