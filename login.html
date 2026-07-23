@@ -47,10 +47,23 @@
             const btn = document.getElementById('btn-login');
             btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Memproses...';
             btn.disabled = true;
-            try {
-                // Tunggu firebaseAPI ready
-                while(!window.firebaseAPI) { await new Promise(r => setTimeout(r, 100)); }
+                        try {
+                // Tambahkan pengaman timeout (maksimal tunggu 5 detik)
+                let waitTime = 0;
+                while(!window.firebaseAPI && waitTime < 50) { 
+                    await new Promise(r => setTimeout(r, 100)); 
+                    waitTime++;
+                }
+                
+                if (!window.firebaseAPI) {
+                    throw new Error("Gagal terhubung ke Firebase. Cek konfigurasi config.js!");
+                }
+
                 await window.auth.login(document.getElementById('username').value, document.getElementById('password').value);
+            } catch (error) {
+                // Akan memunculkan toast error alih-alih loading abadi
+                if(window.utils) window.utils.showToast(error.message, 'error');
+                else alert(error.message);
             } finally {
                 btn.innerHTML = 'Masuk <i data-lucide="arrow-right"></i>';
                 btn.disabled = false;
