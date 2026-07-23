@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contentDiv = document.getElementById('page-content');
   const { db, ref, get, set, update, remove } = window.firebaseAPI;
 
+  // ----------------------------------------------------
+  // 1. HALAMAN DASHBOARD
+  // ----------------------------------------------------
   if (path === 'dashboard.html' || path === '') {
     document.getElementById('page-title').innerText = "Dashboard Overview";
     if (session.role === 'admin') {
@@ -44,6 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ----------------------------------------------------
+  // 2. HALAMAN ADMIN-USERS
+  // ----------------------------------------------------
   else if (path === 'admin-users.html') {
     document.getElementById('page-title').innerText = "Kelola Pengguna";
     
@@ -223,6 +229,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
+  // ----------------------------------------------------
+  // 3. HALAMAN ADMIN-SERVERS & USER-SERVERS
+  // ----------------------------------------------------
   else if (path === 'admin-servers.html' || path === 'user-servers.html') {
     const isUserMode = path === 'user-servers.html';
     document.getElementById('page-title').innerText = isUserMode ? "Server Saya" : "Kelola Semua Server";
