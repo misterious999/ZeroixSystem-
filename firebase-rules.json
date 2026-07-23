@@ -1,0 +1,28 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    
+    "users": {
+      ".read": true, 
+      "$username": {
+        ".write": "newData.exists() || data.exists()" 
+      }
+    },
+    
+    "servers": {
+      ".read": true,
+      ".write": true
+    },
+    
+    "activityLogs": {
+      ".read": true,
+      ".write": true
+    },
+    
+    "announcement": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

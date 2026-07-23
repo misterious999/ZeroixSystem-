@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroixDark Ptero — Hosting Panel Pterodactyl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Config Wajib Load Pertama -->
+    <script src="js/config.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo flex" style="display:flex; align-items:center; gap:10px; font-weight:bold; font-size:1.2rem;">
+            <i data-lucide="zap" class="text-cyan"></i> ZeroixDark Ptero
+        </div>
+        <div class="nav-links">
+            <a href="#produk">Produk</a>
+            <a href="#keunggulan">Keunggulan</a>
+            <a href="login.html" class="btn btn-primary">Login</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <h1>Hosting Panel Pterodactyl<br><span class="text-cyan">Termurah & Tercepat</span></h1>
+        <p>Mulai dari Rp 3.000. Server aktif dalam 5 menit. Dipercaya oleh ribuan user untuk kebutuhan Bot dan Game Server.</p>
+        <div style="display:flex; gap:15px; margin-top: 20px;">
+            <a href="#produk" class="btn btn-primary"><i data-lucide="shopping-bag"></i> Lihat Produk</a>
+            <a href="login.html" class="btn btn-secondary">Masuk Panel</a>
+        </div>
+    </header>
+
+    <section id="produk" style="padding-top: 100px;">
+        <h2 class="section-title">Pilih Paket ZeroixDark Ptero</h2>
+        <div class="grid" id="product-grid">
+            <!-- Rendered by JS -->
+        </div>
+    </section>
+
+    <section id="keunggulan" style="padding-top: 60px;">
+        <h2 class="section-title">Kenapa Memilih Kami?</h2>
+        <div class="grid">
+            <div class="glass-card text-center" style="text-align:center;">
+                <i data-lucide="zap" class="text-cyan" style="width:40px;height:40px;margin-bottom:15px;"></i>
+                <h3>Server Aktif 5 Menit</h3>
+                <p class="text-muted" style="margin-top:10px;">Proses setup secepat kilat setelah pembayaran terkonfirmasi.</p>
+            </div>
+            <div class="glass-card text-center" style="text-align:center;">
+                <i data-lucide="shield" class="text-cyan" style="width:40px;height:40px;margin-bottom:15px;"></i>
+                <h3>Anti-DDoS Protection</h3>
+                <p class="text-muted" style="margin-top:10px;">Keamanan tingkat tinggi untuk menjaga server tetap online.</p>
+            </div>
+            <div class="glass-card text-center" style="text-align:center;">
+                <i data-lucide="hard-drive" class="text-cyan" style="width:40px;height:40px;margin-bottom:15px;"></i>
+                <h3>SSD NVMe Storage</h3>
+                <p class="text-muted" style="margin-top:10px;">Performa I/O maksimal dengan teknologi penyimpanan terbaru.</p>
+            </div>
+            <div class="glass-card text-center" style="text-align:center;">
+                <i data-lucide="headphones" class="text-cyan" style="width:40px;height:40px;margin-bottom:15px;"></i>
+                <h3>Support 24/7</h3>
+                <p class="text-muted" style="margin-top:10px;">Admin siap membantu kapanpun melalui WhatsApp.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="glass-card" style="margin-top: 100px; text-align: center; border-radius:0; border-bottom:none; border-left:none; border-right:none;">
+        <h3 class="text-cyan">ZeroixDark Ptero</h3>
+        <p class="text-muted" style="margin: 10px 0;" id="footer-tagline"></p>
+        <p class="text-muted" style="font-size: 0.8rem;">&copy; 2026 ZeroixDark Ptero. All rights reserved.</p>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        document.getElementById('footer-tagline').innerText = CONFIG.app.tagline;
+
+        const productGrid = document.getElementById('product-grid');
+        CONFIG.pricing.ram.forEach(pkg => {
+            productGrid.innerHTML += `
+                <div class="glass-card">
+                    <h3 style="font-size:1.5rem; margin-bottom:10px;">Panel ${pkg.name}</h3>
+                    <p class="text-cyan" style="font-size:1.8rem; font-weight:bold; margin-bottom:20px;">Rp ${pkg.price}</p>
+                    <ul style="list-style:none; margin-bottom:20px; color:var(--text-muted); line-height:1.8;">
+                        <li><i data-lucide="check" class="text-cyan" style="width:16px;"></i> RAM: ${pkg.name}</li>
+                        <li><i data-lucide="check" class="text-cyan" style="width:16px;"></i> CPU: Unmetered</li>
+                        <li><i data-lucide="check" class="text-cyan" style="width:16px;"></i> Storage: SSD NVMe</li>
+                        <li><i data-lucide="check" class="text-cyan" style="width:16px;"></i> 24/7 Support</li>
+                    </ul>
+                    <a href="https://wa.me/${CONFIG.whatsapp.ownerNumber}?text=Halo Admin ZeroixDark Ptero, saya mau beli Panel Pterodactyl Paket RAM ${pkg.name} seharga Rp ${pkg.price}. Mohon diproses!" class="btn btn-primary" style="width:100%">Beli via WhatsApp</a>
+                </div>
+            `;
+        });
+        lucide.createIcons();
+    </script>
+</body>
+</html>
