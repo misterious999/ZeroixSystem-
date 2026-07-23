@@ -1,7 +1,3 @@
-// ============================================
-// ZEROIXDARK PTERO - LOGIC PER HALAMAN
-// ============================================
-
 document.addEventListener('DOMContentLoaded', async () => {
   while (!window.firebaseAPI) { await new Promise(r => setTimeout(r, 100)); }
   
@@ -14,12 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contentDiv = document.getElementById('page-content');
   const { db, ref, get, set, update, remove } = window.firebaseAPI;
 
-  // ----------------------------------------------------
-  // 1. HALAMAN: DASHBOARD.HTML
-  // ----------------------------------------------------
   if (path === 'dashboard.html' || path === '') {
     document.getElementById('page-title').innerText = "Dashboard Overview";
-    
     if (session.role === 'admin') {
       const usersSnap = await get(ref(db, 'users'));
       const users = usersSnap.exists() ? Object.values(usersSnap.val()) : [];
@@ -52,9 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ----------------------------------------------------
-  // 2. HALAMAN: ADMIN-USERS.HTML (Kelola & Hapus User)
-  // ----------------------------------------------------
   else if (path === 'admin-users.html') {
     document.getElementById('page-title').innerText = "Kelola Pengguna";
     
@@ -64,33 +53,80 @@ document.addEventListener('DOMContentLoaded', async () => {
           <h3>Daftar Pengguna</h3>
           <p class="text-muted" style="font-size:0.9rem;">Kelola akses dan data user panel.</p>
         </div>
-        <button class="btn btn-primary" onclick="alert('Form Tambah User Pterodactyl API akan muncul di sini.')"><i data-lucide="plus"></i> Tambah User</button>
+        <button class="btn btn-primary" onclick="openAddUserModal()"><i data-lucide="plus"></i> Tambah User</button>
       </div>
+      
       <div class="glass-card" style="overflow-x:auto;">
         <table id="users-table">
-          <thead><tr><th>Username</th><th>Nama</th><th>WhatsApp</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>Username</th><th>Nama</th><th>WhatsApp</th><th>Sisa Waktu</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody><tr><td colspan="6" style="text-align:center;"><i data-lucide="loader" class="spin"></i> Memuat...</td></tr></tbody>
         </table>
       </div>
+
+      <div id="addUserModal" class="modal-overlay">
+        <div class="modal-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="display:flex; align-items:center; gap:10px;"><i data-lucide="server" class="text-cyan"></i> Buat User & Server Node.js</h3>
+            <button class="btn-icon" onclick="closeAddUserModal()"><i data-lucide="x"></i></button>
+          </div>
+          <form id="formAddUser" onsubmit="submitAddUser(event)">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+              <div class="form-group">
+                <label>Username (Tanpa Spasi)</label>
+                <input type="text" id="addUname" class="form-control" required pattern="[a-zA-Z0-9_]+">
+              </div>
+              <div class="form-group">
+                <label>Password Panel</label>
+                <input type="text" id="addPass" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="addName" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>No. WhatsApp</label>
+                <input type="number" id="addWA" class="form-control" required>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+              <label>Paket RAM Server</label>
+              <select id="addRam" class="form-control" required style="background: var(--bg-dark);">
+                ${window.CONFIG.pricing.ram.map(r => `<option value="${r.id}" data-price="${r.price}">${r.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Masa Aktif (Hari)</label>
+              <input type="number" id="addDays" class="form-control" placeholder="Contoh: 30" required>
+            </div>
+            <button type="submit" id="btnSubmitUser" class="btn btn-primary" style="width:100%; margin-top:20px;">
+              <i data-lucide="zap"></i> Buat Sekarang
+            </button>
+          </form>
+        </div>
+      </div>
     `;
 
-    // Fetch users
     const snap = await get(ref(db, 'users'));
     const tbody = document.querySelector('#users-table tbody');
     if(snap.exists()) {
       tbody.innerHTML = '';
       Object.entries(snap.val()).forEach(([uname, data]) => {
-        if(uname === 'admin') return; // Sembunyikan super admin utama dari tabel hapus
-        
+        if(uname === 'admin') return; 
         const badge = data.isActive ? '<span class="badge-cyan">Aktif</span>' : '<span class="badge-danger">Nonaktif</span>';
+        const sisaWaktu = window.utils.getCountdown(data.expiredAt);
+        const teksSisaWaktu = sisaWaktu.isExpired 
+            ? `<span class="text-danger">Expired</span>` 
+            : `<span class="text-muted" style="font-size:0.85rem">${sisaWaktu.text}</span>`;
+
         tbody.innerHTML += `
           <tr>
             <td><b>${window.utils.escapeHtml(uname)}</b></td>
             <td>${window.utils.escapeHtml(data.name)}</td>
             <td><a href="https://wa.me/${data.whatsapp}" target="_blank" class="text-cyan">${data.whatsapp || '-'}</a></td>
-            <td><span class="badge-${data.role==='admin'?'gold':'cyan'}">${data.role.toUpperCase()}</span></td>
+            <td>${teksSisaWaktu}</td>
             <td>${badge}</td>
             <td>
+              <button class="btn-icon" onclick="perpanjangUser('${uname}', ${data.expiredAt || 0})" title="Perpanjang Masa Aktif"><i data-lucide="calendar-clock" class="text-gold"></i></button>
               <button class="btn-icon" onclick="hapusUser('${uname}')" title="Hapus User & Server"><i data-lucide="trash-2" class="text-danger"></i></button>
             </td>
           </tr>
@@ -100,39 +136,93 @@ document.addEventListener('DOMContentLoaded', async () => {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Hanya ada akun kamu.</td></tr>';
     }
 
-    // FUNGSI SAKTI: HAPUS USER + SERVER
-    window.hapusUser = async (username) => {
-        const isConfirm = confirm(`⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus user '${username}'?\nJika Anda menekan OK, sistem akan menanyakan apakah server miliknya juga ingin dihapus.`);
-        if(!isConfirm) return;
+    window.openAddUserModal = () => { document.getElementById('addUserModal').classList.add('active'); lucide.createIcons(); };
+    window.closeAddUserModal = () => { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('formAddUser').reset(); };
 
-        const hapusServerJuga = confirm(`🔥 HAPUS SERVER JUGA?\n\nKlik 'OK' untuk menghapus User + SEMUA Server miliknya.\nKlik 'Cancel' jika hanya ingin menghapus User saja.`);
+    window.submitAddUser = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitUser');
+        btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Memproses...';
+        btn.disabled = true;
+
+        const uname = document.getElementById('addUname').value.toLowerCase();
+        const pass = document.getElementById('addPass').value;
+        const name = document.getElementById('addName').value;
+        const wa = document.getElementById('addWA').value;
+        const ram = document.getElementById('addRam').value;
+        const days = parseInt(document.getElementById('addDays').value);
+        const serverId = `srv-${Date.now().toString().slice(-6)}`;
 
         try {
-            if(hapusServerJuga) {
-                // Cari dan hapus semua server milik user ini
-                const srvSnap = await get(ref(db, 'servers'));
-                if(srvSnap.exists()) {
-                    for(let [sId, sData] of Object.entries(srvSnap.val())) {
-                        if(sData.ownerUsername === username || sData.ownerUsername === undefined) {
-                            await remove(ref(db, `servers/${sId}`));
-                        }
-                    }
-                }
-            }
-            // Hapus usernya
-            await remove(ref(db, `users/${username}`));
-            window.utils.showToast(`User ${username} ${hapusServerJuga ? '+ Servernya' : ''} berhasil dihapus!`, 'success');
-            window.utils.logActivity('DELETE', `Menghapus ${username} ${hapusServerJuga ? 'beserta servernya' : ''}`);
+            const checkUser = await get(ref(db, `users/${uname}`));
+            if(checkUser.exists()) throw new Error("Username sudah terdaftar di Database!");
+
+            await set(ref(db, `users/${uname}`), {
+                password: pass, role: "user", name: name, whatsapp: wa,
+                profilePic: "", panelRole: "member", ramPackage: ram,
+                expiredAt: Date.now() + (days * 24 * 60 * 60 * 1000), 
+                createdAt: Date.now(), isActive: true, isOnline: false
+            });
+
+            await set(ref(db, `servers/${serverId}`), {
+                ownerUsername: uname, name: `Node.js Server (${name})`,
+                ram: ram, node: "Node-1", status: "active", createdAt: Date.now()
+            });
+
+            window.utils.showToast('Berhasil! User & Server Node.js telah dibuat.', 'success');
+            window.utils.logActivity('CREATE', `Membuat user ${uname} dengan paket ${ram}`);
+            
+            setTimeout(() => location.reload(), 1500);
+        } catch (error) {
+            window.utils.showToast(error.message, 'error');
+            btn.innerHTML = '<i data-lucide="zap"></i> Buat Sekarang';
+            btn.disabled = false;
+        }
+    };
+
+    window.perpanjangUser = async (username, currentExpired) => {
+        const daysInput = prompt(`Berapa HARI Anda ingin memperpanjang masa aktif user '${username}'?\n\n(Ketik angka saja, contoh: 30)`);
+        if(daysInput === null || daysInput.trim() === "") return; 
+
+        const days = parseInt(daysInput);
+        if(isNaN(days) || days <= 0) {
+            window.utils.showToast("Jumlah hari tidak valid!", "error");
+            return;
+        }
+
+        try {
+            const baseTime = (currentExpired && currentExpired > Date.now()) ? currentExpired : Date.now();
+            const newExpiredAt = baseTime + (days * 24 * 60 * 60 * 1000);
+            
+            await update(ref(db, `users/${username}`), { expiredAt: newExpiredAt });
+            window.utils.showToast(`Sukses! Masa aktif ${username} ditambah ${days} hari.`, 'success');
+            window.utils.logActivity('UPDATE', `Menambah expired ${username} sebanyak ${days} hari`);
+            
             setTimeout(() => location.reload(), 1500);
         } catch(e) {
             window.utils.showToast(e.message, 'error');
         }
     };
+
+    window.hapusUser = async (username) => {
+        if(!confirm(`⚠️ Hapus user '${username}'?\nKlik OK, lalu sistem akan menanyakan penghapusan server.`)) return;
+        const hapusServerJuga = confirm(`🔥 HAPUS SERVER JUGA? (User + Semua Server)`);
+        try {
+            if(hapusServerJuga) {
+                const srvSnap = await get(ref(db, 'servers'));
+                if(srvSnap.exists()) {
+                    for(let [sId, sData] of Object.entries(srvSnap.val())) {
+                        if(sData.ownerUsername === username) await remove(ref(db, `servers/${sId}`));
+                    }
+                }
+            }
+            await remove(ref(db, `users/${username}`));
+            window.utils.showToast('User berhasil dihapus!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } catch(e) { window.utils.showToast(e.message, 'error'); }
+    };
   }
 
-  // ----------------------------------------------------
-  // 3. HALAMAN: ADMIN-SERVERS.HTML (Hapus Server Saja)
-  // ----------------------------------------------------
   else if (path === 'admin-servers.html' || path === 'user-servers.html') {
     const isUserMode = path === 'user-servers.html';
     document.getElementById('page-title').innerText = isUserMode ? "Server Saya" : "Kelola Semua Server";
@@ -157,8 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       tbody.innerHTML = '';
       Object.entries(srvSnap.val()).forEach(([sId, sData]) => {
         if(sId === '_placeholder') return;
-        
-        // Filter jika ini halaman user (hanya tampilkan miliknya)
         if(isUserMode && sData.ownerUsername !== session.username) return;
 
         const badgeStatus = sData.status === 'active' ? '<span class="badge-cyan">Active</span>' : '<span class="badge-danger">Suspended</span>';
@@ -178,7 +266,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       tbody.innerHTML = `<tr><td colspan="${isUserMode ? '5' : '6'}" style="text-align:center;">Belum ada server yang dibuat.</td></tr>`;
     }
 
-    // FUNGSI SAKTI: HAPUS SERVER SAJA
     if(!isUserMode) {
       window.hapusServer = async (serverId) => {
           if(!confirm(`🔥 Yakin ingin menghapus Server ID ${serverId} secara permanen?`)) return;
@@ -194,7 +281,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Placeholder untuk halaman lain (mencegah blank)
   else {
     document.getElementById('page-title').innerText = "Halaman Tidak Ditemukan";
     contentDiv.innerHTML = `
