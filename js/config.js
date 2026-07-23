@@ -15,20 +15,20 @@ const CONFIG = {
   // 🦖 PTERODACTYL PANEL API
   ptero: {
     primary: {
-      url: "https://panel.domainkamu.com",
-      apiKey: "ptla_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      url: "https://assistantzeroix.bypstar7.online",
+      apiKey: "ptla_WlmF4CJ2yI68CQEKcFeDieij2gXE67CESbqGISbXOeB",
       name: "Server Utama"
     },
     secondary: {
-      url: "https://panel2.domainkamu.com",
-      apiKey: "ptla_YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY",
+      url: "https://assistantzeroix.bypstar7.online",
+      apiKey: "ptla_WlmF4CJ2yI68CQEKcFeDieij2gXE67CESbqGISbXOeB",
       name: "Server Backup"
     }
   },
   // 💬 WHATSAPP OWNER
   whatsapp: {
-    ownerNumber: "6281234567890",
-    ownerName: "Admin ZeroixDark"
+    ownerNumber: "62895416479539",
+    ownerName: "Admin Keknya Pstar7"
   },
   // 🏷️ APP INFO
   app: {
