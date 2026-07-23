@@ -1,9 +1,8 @@
 // ============================================
-// ZEROIXDARK PTERO - LOGIKA UTAMA FULL AUTO
+// ZEROIXDARK PTERO - LOGIKA UTAMA FULL AUTO (CORS BYPASSED)
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Tunggu Firebase Module Ready
   while (!window.firebaseAPI) { await new Promise(r => setTimeout(r, 100)); }
   
   const path = window.location.pathname.split('/').pop() || 'dashboard.html';
@@ -15,8 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contentDiv = document.getElementById('page-content');
   const { db, ref, get, set, update, remove } = window.firebaseAPI;
   
-  // Konfigurasi Pterodactyl API
+  // Konfigurasi Pterodactyl API & Cloudflare Worker (Bypass CORS)
   const pteroConfig = window.CONFIG.ptero.primary;
+  const WORKER_URL = "https://restless-truth-9b75.amisterious09.workers.dev";
   const pteroHeaders = {
       "Accept": "application/json",
       "Content-Type": "application/json",
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   // =====================================================================
-  // 🔥 FUNGSI SAKTI 1: AUTO-DELETE JIKA EXPIRED (Berjalan di latar belakang)
+  // 🔥 FUNGSI SAKTI 1: AUTO-DELETE JIKA EXPIRED (Tembus CORS)
   // =====================================================================
   if (session.role === 'user' && session.expiredAt > 0 && Date.now() > session.expiredAt) {
       document.body.innerHTML = `
@@ -41,11 +41,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (srvSnap.exists()) {
               for (let [sId, sData] of Object.entries(srvSnap.val())) {
                   if (sData.ownerUsername === session.username) {
+                      // Bypass CORS untuk hapus Server & User
                       if (sData.pteroServerId) {
-                          await fetch(`${pteroConfig.url}/api/application/servers/${sData.pteroServerId}`, { method: 'DELETE', headers: pteroHeaders });
+                          await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/servers/${sData.pteroServerId}/force`, { method: 'DELETE', headers: pteroHeaders });
                       }
                       if (sData.pteroUserId) {
-                          await fetch(`${pteroConfig.url}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
+                          await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
                       }
                       await remove(ref(db, `servers/${sId}`));
                   }
@@ -54,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           await remove(ref(db, `users/${session.username}`));
           window.utils.logActivity('AUTO_DELETE', `Sistem menghapus otomatis akun expired: ${session.username}`);
       } catch (e) {
-          console.error("Gagal auto-delete Pterodactyl (Mungkin CORS/API Key):", e);
+          console.error("Gagal auto-delete Pterodactyl:", e);
       }
       
       setTimeout(() => {
@@ -85,7 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       `;
     } else {
-      // DASHBOARD USER: LIVE COUNTDOWN & REALTIME STATS
       document.getElementById('page-title').innerText = "Monitoring Server";
       
       contentDiv.innerHTML = `
@@ -120,7 +120,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       `;
 
-      // Fungsi Hitung Mundur
       setInterval(() => {
           const diff = session.expiredAt - Date.now();
           if (diff <= 0) {
@@ -135,14 +134,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.getElementById('live-countdown').innerText = `${d} Hari ${h} Jam ${m} Mnt ${s} Dtk`;
       }, 1000);
 
-      // Fungsi Ambil Data Server
       const fetchStats = async () => {
           try {
               const srvSnap = await get(ref(db, 'servers'));
               if(srvSnap.exists()) {
                   const myServer = Object.values(srvSnap.val()).find(s => s.ownerUsername === session.username);
                   if(myServer && myServer.pteroIdentifier) {
-                      const statRes = await fetch(`${pteroConfig.url}/api/client/servers/${myServer.pteroIdentifier}/resources`, {
+                      // Bypass CORS untuk ambil live stat
+                      const statRes = await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/client/servers/${myServer.pteroIdentifier}/resources`, {
                           headers: { "Accept": "application/json", "Authorization": `Bearer ${window.CONFIG.ptero.clientApiKey || pteroConfig.apiKey}` }
                       });
                       
@@ -165,12 +164,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
       
       const simulasiVisual = () => {
-          document.getElementById('stat-ram').innerText = `${Math.floor(Math.random() * 500) + 100} MB / Active`;
-          document.getElementById('bar-ram').style.width = `${Math.floor(Math.random() * 40) + 10}%`;
-          document.getElementById('stat-cpu').innerText = `${Math.floor(Math.random() * 15) + 1}%`;
-          document.getElementById('bar-cpu').style.width = `${Math.floor(Math.random() * 15) + 1}%`;
-          document.getElementById('stat-disk').innerText = `450 MB`;
-          document.getElementById('bar-disk').style.width = `15%`;
+          document.getElementById('stat-ram').innerText = `Sedang sinkronisasi...`;
+          document.getElementById('stat-cpu').innerText = `Sync...`;
+          document.getElementById('stat-disk').innerText = `Sync...`;
       };
       fetchStats();
       setInterval(fetchStats, 5000); 
@@ -178,7 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =====================================================================
-  // 2. HALAMAN ADMIN-USERS (KELOLA PENGGUNA & POPUP RESI)
+  // 2. HALAMAN ADMIN-USERS (KELOLA PENGGUNA & POPUP RESI + CORS BYPASS)
   // =====================================================================
   else if (path === 'admin-users.html') {
     document.getElementById('page-title').innerText = "Kelola Pengguna";
@@ -196,7 +192,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </table>
       </div>
 
-      <!-- MODAL FORM TAMBAH -->
       <div id="addUserModal" class="modal-overlay">
         <div class="modal-box">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -222,7 +217,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       </div>
 
-      <!-- MODAL INFO SUKSES DIBUAT (RESI) -->
       <div id="successModal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
           <i data-lucide="check-circle" class="text-success" style="width:70px; height:70px; margin-bottom:15px; color:var(--success);"></i>
@@ -242,7 +236,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>
     `;
 
-    // Fetch user untuk tabel
     const snap = await get(ref(db, 'users'));
     const tbody = document.querySelector('#users-table tbody');
     if(snap.exists()) {
@@ -268,12 +261,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // Fungsi Kontrol Modal
     window.openAddUserModal = () => { document.getElementById('addUserModal').classList.add('active'); lucide.createIcons(); };
     window.closeAddUserModal = () => { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('formAddUser').reset(); };
     window.tutupDanRefresh = () => { location.reload(); }; 
 
-    // Fungsi Eksekusi Auto Create
+    // EKSEKUSI PEMBUATAN FULL AUTO BYPASS CORS
     window.submitAddUser = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmitUser');
@@ -294,16 +286,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let pteroUserId = null, pteroServerId = null, pteroIdentifier = null;
 
+            // MENGGUNAKAN WORKER PROXY UNTUK TEMBUS CORS
             try {
-                // 1. CARI ALLOCATION PORT KOSONG DI NODE 1
                 let allocId = 1; 
-                const allocRes = await fetch(`${pteroConfig.url}/api/application/nodes/1/allocations?filter[server_id]=`, { headers: pteroHeaders });
+                const allocRes = await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/nodes/1/allocations?filter[server_id]=`, { headers: pteroHeaders });
                 const allocData = await allocRes.json();
                 const availableAlloc = allocData.data.find(a => !a.attributes.assigned);
                 if (availableAlloc) allocId = availableAlloc.attributes.id;
 
-                // 2. BUAT USER DI PTERODACTYL
-                const pteroUserRes = await fetch(`${pteroConfig.url}/api/application/users`, {
+                const pteroUserRes = await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/users`, {
                     method: 'POST', headers: pteroHeaders,
                     body: JSON.stringify({ email: `${uname}@zeroixdark.com`, username: uname, first_name: name, last_name: "Member", password: pass })
                 });
@@ -311,11 +302,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(pteroUserData.errors) throw new Error(pteroUserData.errors[0].detail);
                 pteroUserId = pteroUserData.attributes.id;
 
-                // 3. BUAT SERVER DI PTERODACTYL
                 let ramMB = parseInt(ram.replace('gb', '')) * 1024; 
                 if(ram === 'unlimited') ramMB = 0;
                 
-                const pteroSrvRes = await fetch(`${pteroConfig.url}/api/application/servers`, {
+                const pteroSrvRes = await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/servers`, {
                     method: 'POST', headers: pteroHeaders,
                     body: JSON.stringify({
                         name: `NodeJS-${uname}`,
@@ -333,10 +323,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pteroServerId = pteroServerData.attributes.id;
                 pteroIdentifier = pteroServerData.attributes.identifier;
             } catch(apiError) {
-                window.utils.showToast("CORS Pterodactyl memblokir API Panel, tapi web tetap memproses datanya ke Database.", "error");
+                console.error("API Panel Error:", apiError);
+                throw new Error("Gagal mengeksekusi Pterodactyl. Cek API Key atau koneksi Worker Anda.");
             }
 
-            // 4. SIMPAN KE FIREBASE
             await set(ref(db, `users/${uname}`), {
                 password: pass, role: "user", name: name, whatsapp: wa,
                 expiredAt: Date.now() + (days * 24 * 60 * 60 * 1000), 
@@ -351,7 +341,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pteroIdentifier: pteroIdentifier || ""
             });
 
-            // Tampilkan Resi
             document.getElementById('resUname').innerText = uname;
             document.getElementById('resPass').innerText = pass;
             document.getElementById('resRam').innerText = ram.toUpperCase();
@@ -384,8 +373,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(srvSnap.exists()) {
                 for(let [sId, sData] of Object.entries(srvSnap.val())) {
                     if(sData.ownerUsername === username) {
-                        if (sData.pteroServerId) fetch(`${pteroConfig.url}/api/application/servers/${sData.pteroServerId}`, { method: 'DELETE', headers: pteroHeaders });
-                        if (sData.pteroUserId) fetch(`${pteroConfig.url}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
+                        // Hapus Pterodactyl via Proxy Worker
+                        if (sData.pteroServerId) fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/servers/${sData.pteroServerId}/force`, { method: 'DELETE', headers: pteroHeaders });
+                        if (sData.pteroUserId) fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/users/${sData.pteroUserId}`, { method: 'DELETE', headers: pteroHeaders });
                         await remove(ref(db, `servers/${sId}`));
                     }
                 }
@@ -447,6 +437,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.hapusServer = async (serverId) => {
           if(!confirm(`🔥 Yakin ingin menghapus Server ID ${serverId} secara permanen?`)) return;
           try {
+              // Hapus Pterodactyl via Worker Proxy
+              const srvSnap = await get(ref(db, `servers/${serverId}`));
+              if(srvSnap.exists()) {
+                  let sData = srvSnap.val();
+                  if (sData.pteroServerId) await fetch(`${WORKER_URL}/?${pteroConfig.url}/api/application/servers/${sData.pteroServerId}/force`, { method: 'DELETE', headers: pteroHeaders });
+              }
               await remove(ref(db, `servers/${serverId}`));
               window.utils.showToast(`Server berhasil dihapus!`, 'success');
               setTimeout(() => location.reload(), 1500);
