@@ -1,18 +1,197 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeroixDark Ptero Panel</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="js/config.js"></script>
-</head>
-<body>
-    <div id="layout-container"></div>
-    <script type="module" src="js/firebase.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/main.js"></script>
-</body>
-</html>
+  // ----------------------------------------------------
+  // 2. HALAMAN: ADMIN-USERS.HTML (Kelola, Hapus, Tambah & Perpanjang)
+  // ----------------------------------------------------
+  else if (path === 'admin-users.html') {
+    document.getElementById('page-title').innerText = "Kelola Pengguna";
+    
+    // UI Tabel & Modal Form Tambah User
+    contentDiv.innerHTML = `
+      <div class="glass-card" style="margin-bottom:25px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h3>Daftar Pengguna</h3>
+          <p class="text-muted" style="font-size:0.9rem;">Kelola akses dan data user panel.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddUserModal()"><i data-lucide="plus"></i> Tambah User</button>
+      </div>
+      
+      <div class="glass-card" style="overflow-x:auto;">
+        <table id="users-table">
+          <thead><tr><th>Username</th><th>Nama</th><th>WhatsApp</th><th>Sisa Waktu</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;"><i data-lucide="loader" class="spin"></i> Memuat...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- MODAL TAMBAH USER & SERVER (NODE.JS) -->
+      <div id="addUserModal" class="modal-overlay">
+        <div class="modal-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="display:flex; align-items:center; gap:10px;"><i data-lucide="server" class="text-cyan"></i> Buat User & Server Node.js</h3>
+            <button class="btn-icon" onclick="closeAddUserModal()"><i data-lucide="x"></i></button>
+          </div>
+          <form id="formAddUser" onsubmit="submitAddUser(event)">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+              <div class="form-group">
+                <label>Username (Tanpa Spasi)</label>
+                <input type="text" id="addUname" class="form-control" required pattern="[a-zA-Z0-9_]+">
+              </div>
+              <div class="form-group">
+                <label>Password Panel</label>
+                <input type="text" id="addPass" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="addName" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>No. WhatsApp</label>
+                <input type="number" id="addWA" class="form-control" required>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+              <label>Paket RAM Server</label>
+              <select id="addRam" class="form-control" required style="background: var(--bg-dark);">
+                ${window.CONFIG.pricing.ram.map(r => `<option value="${r.id}" data-price="${r.price}">${r.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Masa Aktif (Hari)</label>
+              <input type="number" id="addDays" class="form-control" placeholder="Contoh: 30" required>
+            </div>
+            <button type="submit" id="btnSubmitUser" class="btn btn-primary" style="width:100%; margin-top:20px;">
+              <i data-lucide="zap"></i> Buat Sekarang
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+
+    // Fetch users untuk tabel
+    const snap = await get(ref(db, 'users'));
+    const tbody = document.querySelector('#users-table tbody');
+    if(snap.exists()) {
+      tbody.innerHTML = '';
+      Object.entries(snap.val()).forEach(([uname, data]) => {
+        if(uname === 'admin') return; 
+        const badge = data.isActive ? '<span class="badge-cyan">Aktif</span>' : '<span class="badge-danger">Nonaktif</span>';
+        
+        // Cek sisa waktu untuk ditampilkan di tabel
+        const sisaWaktu = window.utils.getCountdown(data.expiredAt);
+        const teksSisaWaktu = sisaWaktu.isExpired 
+            ? `<span class="text-danger">Expired</span>` 
+            : `<span class="text-muted" style="font-size:0.85rem">${sisaWaktu.text}</span>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td><b>${window.utils.escapeHtml(uname)}</b></td>
+            <td>${window.utils.escapeHtml(data.name)}</td>
+            <td><a href="https://wa.me/${data.whatsapp}" target="_blank" class="text-cyan">${data.whatsapp || '-'}</a></td>
+            <td>${teksSisaWaktu}</td>
+            <td>${badge}</td>
+            <td>
+              <button class="btn-icon" onclick="perpanjangUser('${uname}', ${data.expiredAt || 0})" title="Perpanjang Masa Aktif"><i data-lucide="calendar-clock" class="text-gold"></i></button>
+              <button class="btn-icon" onclick="hapusUser('${uname}')" title="Hapus User & Server"><i data-lucide="trash-2" class="text-danger"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Hanya ada akun kamu.</td></tr>';
+    }
+
+    // FUNGSI KONTROL MODAL TAMBAH USER
+    window.openAddUserModal = () => { document.getElementById('addUserModal').classList.add('active'); lucide.createIcons(); };
+    window.closeAddUserModal = () => { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('formAddUser').reset(); };
+
+    // FUNGSI SUBMIT FORM CREATE
+    window.submitAddUser = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitUser');
+        btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Memproses...';
+        btn.disabled = true;
+
+        const uname = document.getElementById('addUname').value.toLowerCase();
+        const pass = document.getElementById('addPass').value;
+        const name = document.getElementById('addName').value;
+        const wa = document.getElementById('addWA').value;
+        const ram = document.getElementById('addRam').value;
+        const days = parseInt(document.getElementById('addDays').value);
+        const serverId = `srv-${Date.now().toString().slice(-6)}`;
+
+        try {
+            const checkUser = await get(ref(db, `users/${uname}`));
+            if(checkUser.exists()) throw new Error("Username sudah terdaftar di Database!");
+
+            await set(ref(db, `users/${uname}`), {
+                password: pass, role: "user", name: name, whatsapp: wa,
+                profilePic: "", panelRole: "member", ramPackage: ram,
+                expiredAt: Date.now() + (days * 24 * 60 * 60 * 1000), 
+                createdAt: Date.now(), isActive: true, isOnline: false
+            });
+
+            await set(ref(db, `servers/${serverId}`), {
+                ownerUsername: uname, name: `Node.js Server (${name})`,
+                ram: ram, node: "Node-1", status: "active", createdAt: Date.now()
+            });
+
+            window.utils.showToast('Berhasil! User & Server Node.js telah dibuat.', 'success');
+            window.utils.logActivity('CREATE', `Membuat user ${uname} dengan paket ${ram}`);
+            
+            setTimeout(() => location.reload(), 1500);
+        } catch (error) {
+            window.utils.showToast(error.message, 'error');
+            btn.innerHTML = '<i data-lucide="zap"></i> Buat Sekarang';
+            btn.disabled = false;
+        }
+    };
+
+    // FUNGSI SAKTI: PERPANJANG MASA AKTIF
+    window.perpanjangUser = async (username, currentExpired) => {
+        // Tampilkan pop-up input bawaan browser untuk memasukkan jumlah hari
+        const daysInput = prompt(`Berapa HARI Anda ingin memperpanjang masa aktif user '${username}'?\n\n(Ketik angka saja, contoh: 30)`);
+        
+        // Jika admin klik Cancel atau biarkan kosong
+        if(daysInput === null || daysInput.trim() === "") return; 
+
+        const days = parseInt(daysInput);
+        if(isNaN(days) || days <= 0) {
+            window.utils.showToast("Jumlah hari tidak valid!", "error");
+            return;
+        }
+
+        try {
+            // Logika cerdas: Jika user sudah expired, hitung perpanjangan dari hari INI. 
+            // Tapi jika belum expired, tambahkan sisa waktu lamanya dengan waktu yang baru.
+            const baseTime = (currentExpired && currentExpired > Date.now()) ? currentExpired : Date.now();
+            const newExpiredAt = baseTime + (days * 24 * 60 * 60 * 1000); // Konversi hari ke milidetik
+            
+            // Update node di Firebase
+            await update(ref(db, `users/${username}`), { expiredAt: newExpiredAt });
+            
+            window.utils.showToast(`Sukses! Masa aktif ${username} ditambah ${days} hari.`, 'success');
+            window.utils.logActivity('UPDATE', `Menambah expired ${username} sebanyak ${days} hari`);
+            
+            setTimeout(() => location.reload(), 1500);
+        } catch(e) {
+            window.utils.showToast(e.message, 'error');
+        }
+    };
+
+    // FUNGSI HAPUS USER
+    window.hapusUser = async (username) => {
+        if(!confirm(`⚠️ Hapus user '${username}'?\nKlik OK, lalu sistem akan menanyakan penghapusan server.`)) return;
+        const hapusServerJuga = confirm(`🔥 HAPUS SERVER JUGA? (User + Semua Server)`);
+        try {
+            if(hapusServerJuga) {
+                const srvSnap = await get(ref(db, 'servers'));
+                if(srvSnap.exists()) {
+                    for(let [sId, sData] of Object.entries(srvSnap.val())) {
+                        if(sData.ownerUsername === username) await remove(ref(db, `servers/${sId}`));
+                    }
+                }
+            }
+            await remove(ref(db, `users/${username}`));
+            window.utils.showToast('User berhasil dihapus!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } catch(e) { window.utils.showToast(e.message, 'error'); }
+    };
+  }
