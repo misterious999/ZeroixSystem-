@@ -126,9 +126,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('page-title').innerText = "Kelola Pengguna";
     
     contentDiv.innerHTML = `
-      <div class="glass-card" style="margin-bottom:25px; display:flex; justify-content:space-between; align-items:center;">
-        <div><h3>Daftar Pengguna</h3></div>
-        <button class="btn btn-primary" onclick="openAddUserModal()"><i data-lucide="plus"></i> Tambah User</button>
+      <div class="glass-card admin-header-card" style="margin-bottom:25px;">
+        <h3 style="margin-bottom:15px;">Daftar Pengguna</h3>
+        <div class="admin-actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="openAddUserModal()"><i data-lucide="plus"></i> Tambah User</button>
+          <button class="btn btn-secondary" onclick="openAddServerOnlyModal()"><i data-lucide="server"></i> Tambah Server Saja</button>
+        </div>
       </div>
       <div class="glass-card" style="overflow-x:auto;">
         <table id="users-table"><thead><tr><th>Username</th><th>Nama</th><th>WhatsApp</th><th>Sisa Waktu</th><th>Status</th><th>Aksi</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;"><i data-lucide="loader" class="spin"></i> Memuat...</td></tr></tbody></table>
@@ -181,6 +184,31 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         </div>
       </div>
+
+      <!-- MODAL TAMBAH SERVER SAJA -->
+      <div id="addServerOnlyModal" class="modal-overlay">
+        <div class="modal-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3><i data-lucide="server" class="text-cyan"></i> Tambah Server Saja</h3>
+            <button class="btn-icon" onclick="closeAddServerOnlyModal()"><i data-lucide="x"></i></button>
+          </div>
+          <form id="formAddServerOnly" onsubmit="submitAddServerOnly(event)">
+            <div class="form-group">
+              <label>Pilih User yang Sudah Ada</label>
+              <select id="addSrvUser" class="form-control" required style="background: var(--bg-dark);">
+                <option value="">-- Pilih Username --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Paket RAM Server</label>
+              <select id="addSrvRam" class="form-control" required style="background: var(--bg-dark);">
+                ${window.CONFIG.pricing.ram.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+              </select>
+            </div>
+            <button type="submit" id="btnSubmitServerOnly" class="btn btn-primary" style="width:100%; margin-top:20px;"><i data-lucide="zap"></i> Buat Server</button>
+          </form>
+        </div>
+      </div>
     `;
 
     const snap = await get(ref(db, 'users'));
@@ -198,6 +226,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.openAddUserModal = () => { document.getElementById('addUserModal').classList.add('active'); lucide.createIcons(); };
     window.closeAddUserModal = () => { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('formAddUser').reset(); };
+
+    // === TAMBAH SERVER SAJA ===
+    window.openAddServerOnlyModal = async () => {
+      const select = document.getElementById('addSrvUser');
+      select.innerHTML = '<option value="">-- Pilih Username --</option>';
+      const usersSnap = await get(ref(db, 'users'));
+      if (usersSnap.exists()) {
+        Object.keys(usersSnap.val()).forEach(uname => {
+          if (uname !== 'admin') {
+            select.innerHTML += `<option value="${uname}">${uname}</option>`;
+          }
+        });
+      }
+      document.getElementById('addServerOnlyModal').classList.add('active');
+      lucide.createIcons();
+    };
+    window.closeAddServerOnlyModal = () => {
+      document.getElementById('addServerOnlyModal').classList.remove('active');
+      document.getElementById('formAddServerOnly').reset();
+    };
 
     // FUNGSI SALIN TEKS RESI KE CLIPBOARD
     window.salinResiUser = () => {
@@ -316,6 +364,125 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.innerHTML = '<i data-lucide="zap"></i> Eksekusi Pembuatan';
             btn.disabled = false;
         }
+    };
+
+    // === SUBMIT TAMBAH SERVER SAJA ===
+    window.submitAddServerOnly = async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitServerOnly');
+      btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Memproses...';
+      btn.disabled = true;
+
+      const uname = document.getElementById('addSrvUser').value;
+      const ram = document.getElementById('addSrvRam').value;
+      const serverId = `srv-${Date.now().toString().slice(-6)}`;
+
+      try {
+        if (!uname) throw new Error("Pilih username terlebih dahulu!");
+
+        // Cari pteroUserId dari server yang sudah ada, atau buat user ptero baru
+        let pteroUserId = null;
+        const srvSnap = await get(ref(db, 'servers'));
+        if (srvSnap.exists()) {
+          for (const sData of Object.values(srvSnap.val())) {
+            if (sData.ownerUsername === uname && sData.pteroUserId) {
+              pteroUserId = sData.pteroUserId;
+              break;
+            }
+          }
+        }
+
+        // Jika belum punya ptero user, buat baru (pakai password yang tersimpan)
+        if (!pteroUserId) {
+          const userSnap = await get(ref(db, `users/${uname}`));
+          if (!userSnap.exists()) throw new Error("User tidak ditemukan di database!");
+          const userData = userSnap.val();
+          const pass = userData.password || "changeme123";
+
+          btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Membuat Akun Ptero...';
+          const pteroUserRes = await fetch(`${pteroApiUrl}/api/application/users`, {
+            method: 'POST', headers: pteroHeaders,
+            body: JSON.stringify({
+              email: `${uname}@zeroixdark.com`,
+              username: uname,
+              first_name: userData.name || uname,
+              last_name: "Member",
+              password: pass
+            })
+          });
+          if (!pteroUserRes.ok) {
+            const err = await pteroUserRes.json().catch(() => ({}));
+            throw new Error(`Gagal buat User Ptero: ${err.errors?.[0]?.detail || "Cek API Key"}`);
+          }
+          const pteroUserData = await pteroUserRes.json();
+          pteroUserId = pteroUserData.attributes.id;
+        }
+
+        // Buat server
+        btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Membuat Server...';
+        let ramMB = parseInt(ram.replace('gb', '')) * 1024;
+        if (ram === 'unlimited') ramMB = 0;
+
+        const serverPayload = {
+          name: `Bot-${uname}-${Date.now().toString().slice(-4)}`,
+          user: pteroUserId,
+          egg: pteroConfig.eggId || 15,
+          docker_image: "ghcr.io/parkervcp/yolks:nodejs_20",
+          startup: "if [[ -d .git ]] && [[ {{AUTO_UPDATE}} == \"1\" ]]; then git pull; fi; if [[ ! -z ${NODE_PACKAGES} ]]; then /usr/local/bin/npm install ${NODE_PACKAGES}; fi; if [[ ! -z ${UNNODE_PACKAGES} ]]; then /usr/local/bin/npm uninstall ${UNNODE_PACKAGES}; fi; if [ -f /home/container/package.json ]; then /usr/local/bin/npm install; fi; if [[ ! -z ${CUSTOM_ENVIRONMENT_VARIABLES} ]]; then vars=$(echo ${CUSTOM_ENVIRONMENT_VARIABLES} | tr \";\" \"\\n\"); for line in $vars; do export $line; done fi; /usr/local/bin/${CMD_RUN};",
+          environment: { "INST": "npm", "USER_UPLOAD": "0", "AUTO_UPDATE": "0", "CMD_RUN": "npm start" },
+          limits: {
+            memory: ramMB,
+            swap: pteroConfig.defaultSwap ?? 0,
+            disk: pteroConfig.defaultDisk || 5120,
+            io: pteroConfig.defaultIo || 500,
+            cpu: pteroConfig.defaultCpu || 100
+          },
+          feature_limits: { databases: 1, backups: 1, allocations: 1 },
+          deploy: {
+            locations: [pteroConfig.locationId || 1],
+            dedicated_ip: false,
+            port_range: []
+          }
+        };
+
+        const pteroSrvRes = await fetch(`${pteroApiUrl}/api/application/servers`, {
+          method: 'POST', headers: pteroHeaders,
+          body: JSON.stringify(serverPayload)
+        });
+
+        if (!pteroSrvRes.ok) {
+          const err = await pteroSrvRes.json().catch(() => ({}));
+          throw new Error(`Gagal buat Server: ${err.errors?.[0]?.detail || "Node/Location error"}`);
+        }
+
+        const pteroServerData = await pteroSrvRes.json();
+        const pteroServerId = pteroServerData.attributes.id;
+        const pteroIdentifier = pteroServerData.attributes.identifier;
+
+        // Simpan ke Firebase
+        await set(ref(db, `servers/${serverId}`), {
+          ownerUsername: uname,
+          name: `Node.js Server`,
+          ram: ram,
+          node: "Node-1",
+          status: "active",
+          createdAt: Date.now(),
+          pteroUserId: pteroUserId,
+          pteroServerId: pteroServerId,
+          pteroIdentifier: pteroIdentifier
+        });
+
+        window.utils.showToast(`Server berhasil ditambahkan untuk ${uname}!`, 'success');
+        closeAddServerOnlyModal();
+        setTimeout(() => location.reload(), 1200);
+
+      } catch (error) {
+        console.error("Tambah Server Saja Error:", error);
+        window.utils.showToast(error.message, 'error');
+        btn.innerHTML = '<i data-lucide="zap"></i> Buat Server';
+        btn.disabled = false;
+        lucide.createIcons();
+      }
     };
 
     window.perpanjangUser = async (username, currentExpired) => {
