@@ -56,10 +56,10 @@ const utils = {
     
     const sidebarHTML = `
       <aside class="sidebar glass-card">
-        <div class="sidebar-brand">
+        <a href="dashboard.html" class="sidebar-brand" style="text-decoration:none; color:inherit;">
           <i data-lucide="zap" class="text-cyan"></i>
           <h2>${CONFIG.app.name}</h2>
-        </div>
+        </a>
         <nav class="sidebar-nav">
           <a href="dashboard.html" class="nav-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
           ${isAdmin ? `
